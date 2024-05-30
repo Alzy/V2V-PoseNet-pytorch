@@ -2,6 +2,7 @@ import bpy
 import numpy as np
 from mathutils import Vector
 
+
 def export_vertices_within_bounds(filepath):
     scene = bpy.context.scene
     vertices = []
@@ -67,11 +68,12 @@ def export_vertices_within_bounds(filepath):
     # Save to file
     with open(filepath, 'wb') as file:
         vertices_np.tofile(file)
-        print(f'Vertices exported to {file_path}')
+        print(f'Vertices exported to {filepath}')
 
 
-# Specify the file path
-file_path = 'D:/file_1.hand.bin'
+if __name__ == "__main__":
+    # Specify the file path
+    file_path = 'D:/file_1.vrt_hand.bin'
 
-# Export vertices
-export_vertices_within_bounds(file_path)
+    # Export vertices
+    export_vertices_within_bounds(file_path)
