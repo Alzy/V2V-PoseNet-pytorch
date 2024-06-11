@@ -19,8 +19,11 @@ def export_vertices_within_bounds(filepath):
     cube_bounds_max = cube_matrix_world @ Vector(cube.bound_box[6])
     cube_bottom_center = (cube_bounds_min + cube_bounds_max) / 2
     cube_bottom_center.z = cube_bounds_min.z  # Adjust to the bottom center
-    model_bounds.extend([cube_bounds_min.x, cube_bounds_min.y, cube_bounds_min.z])
-    model_bounds.extend([cube_bounds_max.x, cube_bounds_max.y, cube_bounds_max.z])
+
+    cube_length = cube_bounds_max.x - cube_bounds_min.x
+    # Export bounds of vertices relative to bounding box being floor
+    model_bounds.extend([0 - cube_length/2, 0, 0 - cube_length/2])    # min
+    model_bounds.extend([0 + cube_length/2, cube_length, 0 + cube_length/2])    # max
 
     for obj in scene.objects:
         if obj.type == 'MESH' and obj.name != cube.name:

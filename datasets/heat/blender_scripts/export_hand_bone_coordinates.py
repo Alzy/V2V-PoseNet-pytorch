@@ -26,16 +26,14 @@ def get_normalized_position_in_cube(position: Vector):
     min_bound = bounds['min']
     max_bound = bounds['max']
 
-    # Normalize the position within the cube where top back left is (0,0,0)
-    # and the bottom front right is (1,1,1)
+    # Normalize the position within the cube where bottom back left is (0,0,0)
+    # and the top front right is (1,1,1)
     normalized_x = (position.x - min_bound.x) / (max_bound.x - min_bound.x)
     normalized_y = (position.y - min_bound.y) / (max_bound.y - min_bound.y)
     normalized_z = (position.z - min_bound.z) / (max_bound.z - min_bound.z)
 
-    # Return normalized coordinates with respect to the top back left
-    # Top back left would be (0,1,0) in Blender's coordinate system (Y-down, Z-forward)
-    # print("  World Head:", position.x, position.y, position.z)
-    return Vector((normalized_x, 1 - normalized_y, 1 - normalized_z))
+    # Return normalized coordinates with respect to the bottom back left
+    return Vector((normalized_x, normalized_z, 1 - normalized_y))
 
 
 def write_hand_bone_coordinates_to_file(hand_bone_coordinates, hand_bone_filename):

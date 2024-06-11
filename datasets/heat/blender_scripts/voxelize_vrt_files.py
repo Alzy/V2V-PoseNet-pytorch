@@ -11,6 +11,11 @@ def run_voxelizer(directory):
             output_path = os.path.join(directory, f"{base_name}.vox.bin")
             command = f"HEATVoxelizerWGPU.exe \"{abs_path}\" \"{output_path}\""
 
+            # Skip if the output file already exists
+            if os.path.exists(output_path):
+                print(f"Skipping {abs_path}, output file already exists.")
+                continue
+
             # Execute the command
             subprocess.run(command, shell=True)
             print(f"Processed {abs_path}")
@@ -18,5 +23,5 @@ def run_voxelizer(directory):
 
 if __name__ == "__main__":
     # Replace 'your_directory_path_here' with the path to your directory
-    directory_path = 'D:\HEAT Dataset\processed'
+    directory_path = 'D:\HEAT Dataset\processed\\augmented'
     run_voxelizer(directory_path)

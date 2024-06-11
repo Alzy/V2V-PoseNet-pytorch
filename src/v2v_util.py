@@ -7,7 +7,7 @@ def discretize(coord, cropped_size):
     min_normalized = -1
     max_normalized = 1
     scale = (max_normalized - min_normalized) / cropped_size
-    return (coord - min_normalized) / scale 
+    return (coord - min_normalized) / scale
 
 
 def warp2continuous(coord, refpoint, cubic_size, cropped_size):
@@ -52,13 +52,13 @@ def extract_coord_from_output(output, center=True):
     center: if True, add 0.5, default is true
     return: shape (batch, jointNum, 3)
     '''
-    assert(len(output.shape) >= 3)
+    assert (len(output.shape) >= 3)
     vsize = output.shape[-3:]
 
     output_rs = output.reshape(-1, np.prod(vsize))
     max_index = np.unravel_index(np.argmax(output_rs, axis=1), vsize)
     max_index = np.array(max_index).T
-    
+
     xyz_output = max_index.reshape([*output.shape[:-3], 3])
 
     # Note discrete coord can represents real range [coord, coord+1), see function scattering() 
@@ -77,7 +77,7 @@ def generate_coord(points, refpoint, new_size, angle, trans, sizes):
     # note, will consider points within range [refpoint-cubic_size/2, refpoint+cubic_size/2] as candidates
 
     # normalize
-    coord = (coord - refpoint) / (cubic_size/2)  # -> [-1, 1]
+    coord = (coord - refpoint) / (cubic_size / 2)  # -> [-1, 1]
 
     # discretize
     coord = discretize(coord, cropped_size)  # -> [0, cropped_size]
@@ -86,9 +86,9 @@ def generate_coord(points, refpoint, new_size, angle, trans, sizes):
     # resize around original volume center
     resize_scale = new_size / 100
     if new_size < 100:
-        coord = coord * resize_scale + original_size/2 * (1 - resize_scale)
+        coord = coord * resize_scale + original_size / 2 * (1 - resize_scale)
     elif new_size > 100:
-        coord = coord * resize_scale - original_size/2 * (resize_scale - 1)
+        coord = coord * resize_scale - original_size / 2 * (resize_scale - 1)
     else:
         # new_size = 100 if it is in test mode
         pass
@@ -96,12 +96,12 @@ def generate_coord(points, refpoint, new_size, angle, trans, sizes):
     # rotation
     if angle != 0:
         original_coord = coord.copy()
-        original_coord[:,0] -= original_size / 2
-        original_coord[:,1] -= original_size / 2
-        coord[:,0] = original_coord[:,0]*np.cos(angle) - original_coord[:,1]*np.sin(angle)
-        coord[:,1] = original_coord[:,0]*np.sin(angle) + original_coord[:,1]*np.cos(angle)
-        coord[:,0] += original_size / 2
-        coord[:,1] += original_size / 2
+        original_coord[:, 0] -= original_size / 2
+        original_coord[:, 1] -= original_size / 2
+        coord[:, 0] = original_coord[:, 0] * np.cos(angle) - original_coord[:, 1] * np.sin(angle)
+        coord[:, 1] = original_coord[:, 0] * np.sin(angle) + original_coord[:, 1] * np.cos(angle)
+        coord[:, 0] += original_size / 2
+        coord[:, 1] += original_size / 2
 
     # translation
     # Note, if trans = (original_size/2 - cropped_size/2), the following translation will
@@ -136,17 +136,17 @@ def generate_heatmap_gt(keypoints, refpoint, new_size, angle, trans, sizes, d3ou
     center_offset = 0.5
 
     for i in range(coord.shape[0]):
-        xi, yi, zi= coord[i]
-        heatmap[i] = np.exp(-(np.power((d3output_x+center_offset-xi)/std, 2)/2 + \
-            np.power((d3output_y+center_offset-yi)/std, 2)/2 + \
-            np.power((d3output_z+center_offset-zi)/std, 2)/2))
+        xi, yi, zi = coord[i]
+        heatmap[i] = np.exp(-(np.power((d3output_x + center_offset - xi) / std, 2) / 2 + \
+                              np.power((d3output_y + center_offset - yi) / std, 2) / 2 + \
+                              np.power((d3output_z + center_offset - zi) / std, 2) / 2))
 
     return heatmap
 
 
 class V2VVoxelization(object):
     def __init__(self, cubic_size, augmentation=True):
-        self.cubic_size = cubic_size
+        self.cubic_size = cubic_size  # 200
         self.cropped_size, self.original_size = 88, 96
         self.sizes = (self.cubic_size, self.cropped_size, self.original_size)
         self.pool_factor = 2
@@ -155,7 +155,8 @@ class V2VVoxelization(object):
 
         output_size = int(self.cropped_size / self.pool_factor)
         # Note, range(size) and indexing = 'ij'
-        self.d3outputs = np.meshgrid(np.arange(output_size), np.arange(output_size), np.arange(output_size), indexing='ij')
+        self.d3outputs = np.meshgrid(np.arange(output_size), np.arange(output_size), np.arange(output_size),
+                                     indexing='ij')
 
     def __call__(self, sample):
         points, keypoints, refpoint = sample['points'], sample['keypoints'], sample['refpoint']
@@ -165,29 +166,31 @@ class V2VVoxelization(object):
         new_size = np.random.rand() * 40 + 80
 
         # Rotation
-        angle = np.random.rand() * 80/180*np.pi - 40/180*np.pi
+        angle = np.random.rand() * 80 / 180 * np.pi - 40 / 180 * np.pi
 
         # Translation
-        trans = np.random.rand(3) * (self.original_size-self.cropped_size)
-        
+        trans = np.random.rand(3) * (self.original_size - self.cropped_size)
+
         if not self.augmentation:
             new_size = 100
             angle = 0
-            trans = self.original_size/2 - self.cropped_size/2
+            trans = self.original_size / 2 - self.cropped_size / 2
 
         input = generate_cubic_input(points, refpoint, new_size, angle, trans, self.sizes)
-        heatmap = generate_heatmap_gt(keypoints, refpoint, new_size, angle, trans, self.sizes, self.d3outputs, self.pool_factor, self.std)
+        heatmap = generate_heatmap_gt(keypoints, refpoint, new_size, angle, trans, self.sizes, self.d3outputs,
+                                      self.pool_factor, self.std)
 
         return input.reshape((1, *input.shape)), heatmap
 
     def voxelize(self, points, refpoint):
-        new_size, angle, trans = 100, 0, self.original_size/2 - self.cropped_size/2
+        new_size, angle, trans = 100, 0, self.original_size / 2 - self.cropped_size / 2
         input = generate_cubic_input(points, refpoint, new_size, angle, trans, self.sizes)
         return input.reshape((1, *input.shape))
 
     def generate_heatmap(self, keypoints, refpoint):
-        new_size, angle, trans = 100, 0, self.original_size/2 - self.cropped_size/2
-        heatmap = generate_heatmap_gt(keypoints, refpoint, new_size, angle, trans, self.sizes, self.d3outputs, self.pool_factor, self.std)
+        new_size, angle, trans = 100, 0, self.original_size / 2 - self.cropped_size / 2
+        heatmap = generate_heatmap_gt(keypoints, refpoint, new_size, angle, trans, self.sizes, self.d3outputs,
+                                      self.pool_factor, self.std)
         return heatmap
 
     def evaluate(self, heatmaps, refpoints):
