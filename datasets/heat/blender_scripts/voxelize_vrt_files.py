@@ -5,7 +5,7 @@ import subprocess
 def run_voxelizer(directory):
     # Loop through all files in the given directory
     for filename in os.listdir(directory):
-        if filename.endswith(".vrt_hand.bin"):
+        if filename.endswith(".vrt_body.bin"):
             abs_path = os.path.join(directory, filename)
             base_name = os.path.splitext(os.path.basename(abs_path))[0]
             output_path = os.path.join(directory, f"{base_name}.vox.bin")
@@ -23,5 +23,5 @@ def run_voxelizer(directory):
 
 if __name__ == "__main__":
     # Replace 'your_directory_path_here' with the path to your directory
-    directory_path = 'D:\HEAT Dataset\processed\\augmented'
+    directory_path = 'D:\HEAT Dataset\processed_body\\augmented'
     run_voxelizer(directory_path)

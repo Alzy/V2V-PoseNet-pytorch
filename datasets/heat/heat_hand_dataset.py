@@ -2,6 +2,7 @@ import os
 import numpy as np
 import sys
 import struct
+import torch
 from torch.utils.data import Dataset
 
 
@@ -37,12 +38,12 @@ def horizontal_flip_data(voxel_grid, joint_coordinates):
     flipped_joint_coordinates[:, 0] = 1 - joint_coordinates[:, 0]
 
     # Flip the voxel grid along the x-axis
-    voxel_grid = np.flip(voxel_grid, axis=2)
+    flipped_voxel_grid = np.flip(voxel_grid, axis=2).copy()
 
-    return voxel_grid, joint_coordinates
+    return flipped_voxel_grid, flipped_joint_coordinates
 
 
-def _generate_heatmaps(joint_coordinates, voxel_grid_size, sigma=0.05):
+def _generate_heatmaps(joint_coordinates, voxel_grid_size, sigma=0.11):
     """
     Generate heatmaps for a set of joints.
 
@@ -87,21 +88,40 @@ class HEATHandDataset(Dataset):
         return len(self.all_files)
 
     def __getitem__(self, idx):
+        """
+        Returns next item from the dataset.
+        Return values are the input voxel grid and joint heatmaps. For our dataset, the shapes are as follows:
+        voxel_grid: [1, 88, 88, 88]
+        heatmaps: [16, 44, 44, 44] (since 16 joints)
+        """
         if idx < len(self.base_files):
             # Base files
             voxel_path = os.path.join(self.base_dir, self.all_files[idx])
-            joint_path = voxel_path.replace('.vox.bin', '.crd_hand.bin')
+            joint_path = voxel_path.replace('.vrt_hand.vox.bin', '.crd_hand.bin')
         else:
             # Augmented files
             voxel_path = os.path.join(self.augmented_dir, self.all_files[idx])
-            joint_path = voxel_path.replace('.vox.bin', '.crd_hand.bin')
+            joint_path = voxel_path.replace('.vrt_hand.vox.bin', '.crd_hand.bin')
 
-        voxel_grid = np.fromfile(voxel_path, dtype=np.float32).reshape((88, 88, 88))
-        joint_locations = np.fromfile(joint_path, dtype=np.float32).reshape((-1, 3))
+        voxel_grid = np.fromfile(voxel_path, dtype=np.uint32).astype(np.float32).reshape((88, 88, 88)).copy()
+        joint_locations = np.fromfile(joint_path, dtype=np.float32).reshape((-1, 3)).copy()
+        assert voxel_grid.shape == (88, 88, 88), f"Unexpected voxel_grid shape: {voxel_grid.shape}"
+        assert joint_locations.shape[1] == 3, f"Unexpected joint_locations shape: {joint_locations.shape}"
+
         if np.random.rand() < 0.5:
             # horizontal flip half the time to simulate opposite hand
             voxel_grid, joint_locations = horizontal_flip_data(voxel_grid, joint_locations)
 
         heat_maps = _generate_heatmaps(joint_locations, (88, 88, 88))
+        # Downsample the heatmaps by a factor of 2 (pool_factor)
+        downsampled_heat_maps = np.zeros((16, 44, 44, 44))
+        for i in range(16):
+            downsampled_heat_maps[i] = heat_maps[i, ::2, ::2, ::2]
 
-        return {'voxel_grid': voxel_grid, 'heat_maps': heat_maps}
+        # Add the channel dimension to voxel_grid
+        voxel_grid = voxel_grid.reshape((1, *voxel_grid.shape))
+        assert voxel_grid.shape == (1, 88, 88, 88), f"Unexpected voxel_grid shape after reshape: {voxel_grid.shape}"
+        assert downsampled_heat_maps.shape == (16, 44, 44, 44), f"Unexpected downsampled_heat_maps shape: {downsampled_heat_maps.shape}"
+
+        # return {'voxel_grid': voxel_grid, 'heat_maps': downsampled_heat_maps}
+        return (torch.from_numpy(voxel_grid), torch.from_numpy(downsampled_heat_maps))

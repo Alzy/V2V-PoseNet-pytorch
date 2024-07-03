@@ -154,6 +154,110 @@ def apply_random_transformation_to_vectors(vert_file_path, coords_file_path):
     return vert_np, transformed_joint_values
 
 
+def get_max_scale_factors(true_bounds, cube_bounds):
+    """
+    Returns the maximum scaling factors on each axis before the true bounds of the model touch the cube bounds.
+
+    Args:
+        true_bounds (tuple of mathutils.Vector): True minimum and maximum bounds of the model.
+        cube_bounds (tuple of mathutils.Vector): Minimum and maximum bounds of the cube.
+
+    Returns:
+        mathutils.Vector: Maximum scaling factors on x, y, and z axes.
+    """
+    def round_down(number, decimals):
+        factor = 10 ** decimals
+        return np.floor(number * factor) / factor
+
+    true_min, true_max = true_bounds
+    cube_min, cube_max = cube_bounds
+
+    # Calculate the dimensions of the true bounds and the cube bounds
+    true_dimensions = true_max - true_min
+    cube_dimensions = cube_max - cube_min
+
+    # Calculate the distances to the nearest edges of the cube bounds from the true bounds
+    distance_min = true_min - cube_min
+    distance_max = cube_max - true_max
+
+    factor_min = mathutils.Vector((
+        (distance_min.x / abs(cube_min.x)) + 1,
+        (distance_min.y / abs(cube_min.y)) + 1 if cube_min.y != 0 else 1,
+        (distance_min.z / abs(cube_min.z)) + 1,
+    ))
+    factor_max = mathutils.Vector((
+        (distance_max.x / cube_max.x) + 1,
+        (distance_max.y / cube_max.y) + 1,
+        (distance_max.z / cube_max.z) + 1,
+    ))
+
+    # Calculate the maximum scale factors based on the nearest edges
+    max_scale_factors = mathutils.Vector((
+        round_down(min(factor_min.x, factor_max.x), 1),
+        round_down(max(factor_min.y, factor_max.y), 1),  # y is special case where we want max since we start at 0
+        round_down(min(factor_min.z, factor_max.z), 1),
+    ))
+
+    return max_scale_factors
+
+
+def apply_random_scale_transformation(vert_file_path, coords_file_path):
+    # Read the values from the file
+    values = np.fromfile(vert_file_path, dtype=np.float32)
+    # print("Original Values:", values[6:])
+    joint_coords = np.fromfile(coords_file_path, dtype=np.float32)
+
+    min_bounds = mathutils.Vector(values[:3])
+    max_bounds = mathutils.Vector(values[3:6])
+    vert_values = values[6:]
+
+    vectors = [mathutils.Vector(vert_values[i:i+3]) for i in range(0, len(vert_values), 3)]
+    joint_vectors = [mathutils.Vector(joint_coords[i:i+3]) for i in range(0, len(joint_coords), 3)]
+
+    true_bbox = BoundingBox()
+    true_bbox.expand(vectors)
+    true_min_bounds, true_max_bounds = true_bbox.get_bounds()
+    # pivot is bottom center
+    joint_pivot_point = mathutils.Vector([0.5, 0, 0.5])
+    # print('joint pivot', joint_pivot_point)
+    vert_pivot_point = mathutils.Vector((
+        min_bounds.x + ((max_bounds.x - min_bounds.x) * joint_pivot_point.x),
+        min_bounds.y + ((max_bounds.y - min_bounds.y) * joint_pivot_point.y),
+        min_bounds.z + ((max_bounds.z - min_bounds.z) * joint_pivot_point.z),
+    ))
+    # vert_pivot_point = mathutils.Vector((0,0,0))
+    # print('vert pivot', vert_pivot_point)
+
+    # Define a random transformation
+    min_scale_factor = 0.5
+    max_scale_factor = get_max_scale_factors(
+        (true_min_bounds, true_max_bounds),
+        (min_bounds, max_bounds)
+    )
+
+    print('...max scale factors', max_scale_factor)
+    scale = mathutils.Vector((np.random.uniform(min_scale_factor, max_scale_factor.x),
+                              np.random.uniform(min_scale_factor, max_scale_factor.y),
+                              np.random.uniform(min_scale_factor, max_scale_factor.z)))
+
+    print('...scale', scale)
+    # Apply the transformation on all vectors
+    transformed_vectors = [transform_vector_around_point(v, vert_pivot_point, None, None, scale) for v in vectors]
+    transformed_joints = [transform_vector_around_point(v, joint_pivot_point, None, None, scale) for v in joint_vectors]
+
+    # Convert the transformed vectors back to a flat float32 array
+    transformed_values = np.array([component for vec in transformed_vectors for component in vec], dtype=np.float32)
+    transformed_joint_values = np.array([component for vec in transformed_joints for component in vec], dtype=np.float32)
+
+    # return the results, min and max bounds should remain unchanged
+    np_min_bounds = np.array(min_bounds.to_tuple(), dtype=np.float32)
+    np_max_bounds = np.array(max_bounds.to_tuple(), dtype=np.float32)
+    vert_np = np.concatenate((np_min_bounds, np_max_bounds, transformed_values))
+    # print('done')
+    return vert_np, transformed_joint_values
+
+
+
 def process_files_in_directory(directory):
     # Create the augmented directory if it doesn't exist
     augmented_dir = os.path.join(directory, 'augmented')
@@ -161,34 +265,45 @@ def process_files_in_directory(directory):
 
     # Find all vrt_hand.bin and crd_hand.bin pairs
     files = os.listdir(directory)
-    vrt_files = [f for f in files if f.endswith('.to.vrt_hand.bin')]
+    vrt_files = [f for f in files if f.endswith('.vrt_body.bin')]
+    num_files = len(vrt_files)
 
-    for vrt_file in vrt_files:
-        base_name = vrt_file.replace('.vrt_hand.bin', '')
-        crd_file = base_name + '.crd_hand.bin'
+    for index, vrt_file in enumerate(vrt_files):
+        base_name = vrt_file.replace('.vrt_body.bin', '')
+        crd_file = base_name + '.crd_body.bin'
+        print(f"{index}/{num_files}: {base_name}")
 
         if crd_file in files:
             vrt_file_path = os.path.join(directory, vrt_file)
             crd_file_path = os.path.join(directory, crd_file)
 
             for i in range(20):
-                new_vert_values, new_joint_values = apply_random_transformation_to_vectors(vrt_file_path, crd_file_path)
+                augmented_vrt_file = os.path.join(augmented_dir, f"{base_name}.a{i}.vrt_body.bin")
+                augmented_crd_file = os.path.join(augmented_dir, f"{base_name}.a{i}.crd_body.bin")
+                if os.path.exists(augmented_vrt_file):
+                    print("_", end="")
+                    continue
+
+                # new_vert_values, new_joint_values = apply_random_transformation_to_vectors(vrt_file_path, crd_file_path)
+                new_vert_values, new_joint_values = apply_random_scale_transformation(vrt_file_path, crd_file_path)
 
                 # Save transformed values
-                augmented_vrt_file = os.path.join(augmented_dir, f"{base_name}.a{i}.vrt_hand.bin")
-                augmented_crd_file = os.path.join(augmented_dir, f"{base_name}.a{i}.crd_hand.bin")
                 new_vert_values.tofile(augmented_vrt_file)
                 new_joint_values.tofile(augmented_crd_file)
+                print("#", end="")
+                # print(f"written: {augmented_vrt_file}")
+                # print(f"written: {augmented_crd_file}")
 
 
 if __name__ == "__main__":
-    dataset_directory = "D:\\HEAT Dataset\\processed"
+    dataset_directory = "D:\\HEAT Dataset\\processed_body"
     process_files_in_directory(dataset_directory)
 
-    # vrt_file_path = "D:\\HEAT Dataset\processed\\0c01f7cf47444e428f4c64126b9bf642.vrt_hand.bin"
-    # crd_file_path = "D:\\HEAT Dataset\processed\\0c01f7cf47444e428f4c64126b9bf642.crd_hand.bin"
-    # new_vert_values, new_joint_values = apply_random_transformation_to_vectors(vrt_file_path, crd_file_path)
+    # # process single file
+    # vrt_file_path = "D:\\HEAT Dataset\processed_body\\5cd4a778a4ba439c94af38fb2c5aab82.vrt_body.bin"
+    # crd_file_path = "D:\\HEAT Dataset\processed_body\\5cd4a778a4ba439c94af38fb2c5aab82.crd_body.bin"
+    # new_vert_values, new_joint_values = apply_random_scale_transformation(vrt_file_path, crd_file_path)
     #
     # # Save transformed values
-    # new_vert_values.tofile("D:\\HEAT Dataset\processed\\0c01f7cf47444e428f4c64126b9bf642.a.vrt_hand.bin")
-    # new_joint_values.tofile("D:\\HEAT Dataset\processed\\0c01f7cf47444e428f4c64126b9bf642.a.crd_hand.bin")
+    # new_vert_values.tofile("D:\\HEAT Dataset\processed_body\\5cd4a778a4ba439c94af38fb2c5aab82.a.vrt_body.bin")
+    # new_joint_values.tofile("D:\\HEAT Dataset\processed_body\\5cd4a778a4ba439c94af38fb2c5aab82.a.crd_body.bin")

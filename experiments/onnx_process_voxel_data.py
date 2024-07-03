@@ -33,12 +33,14 @@ def load_voxel_data(filename):
 
     return voxel_grid
 
+
 def run_model(session, voxel_data):
     # Prepare the input to the model as a dictionary
     # The input name 'input' should be the name of the input tensor in the ONNX model
     input_name = session.get_inputs()[0].name
     outputs = session.run(None, {input_name: voxel_data})
     return outputs[0]
+
 
 def main(voxel_file, model_dir, epoch_number):
     # Load ONNX model
@@ -52,6 +54,7 @@ def main(voxel_file, model_dir, epoch_number):
     output = run_model(session, voxel_data)
     keypoints = extract_coord_from_output(output)
     print("Model output:", keypoints)
+
 
 if __name__ == "__main__":
     voxel_file = r'C:\Users\gonza\Desktop\V2V-PoseNet-pytorch\outputs\voxel_grid_0.txt'

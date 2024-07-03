@@ -4,6 +4,7 @@ import os
 from torch.autograd import Variable
 from src.v2v_model import V2VModel  # Ensure this is the correct path to your model's definition
 
+
 def load_checkpoint(model, checkpoint_path):
     """
     Load weights from the checkpoint into a PyTorch model.
@@ -22,6 +23,7 @@ def load_checkpoint(model, checkpoint_path):
 
     return model
 
+
 def export_to_onnx(model, input_size, output_file):
     """
     Export the given model to an ONNX file.
@@ -31,6 +33,7 @@ def export_to_onnx(model, input_size, output_file):
 
     # Export the model
     torch.onnx.export(model, dummy_input, output_file, verbose=True)
+
 
 def main(epoch, checkpoint_dir='../checkpoint', onnx_dir='../onnx'):
     """
@@ -49,13 +52,15 @@ def main(epoch, checkpoint_dir='../checkpoint', onnx_dir='../onnx'):
         os.makedirs(onnx_dir)
 
     # Initialize model
-    model = V2VModel(input_channels=1, output_channels=21)  # Adjust based on your model specification
+    # hand output channels: 16
+    # body output channels: 22
+    model = V2VModel(input_channels=1, output_channels=16)  # Adjust based on your model specification
     model = load_checkpoint(model, checkpoint_file)
     model.eval()  # Set the model to inference mode
 
     # Input Tensor Dimensions:
-    # Batch Size (N): Represents the number of examples in the batch. When creating a dummy input for model export, you typically use a batch size of 1 for simplicity.
-    # Channels (C): Typically, the channel dimension for a voxel grid might be 1 (if the grid contains only occupancy information) unless the model is designed to take multiple types of information or derived features per voxel.
+    # Batch Size (N): Represents the number of voxel grids in the batch.
+    # Channels (C): Typically 1 as there is only one voxel grid channel.
     # Depth (D): The size of the voxel grid along the depth axis.
     # Height (H): The size of the voxel grid along the vertical axis.
     # Width (W): The size of the voxel grid along the horizontal axis
@@ -67,6 +72,7 @@ def main(epoch, checkpoint_dir='../checkpoint', onnx_dir='../onnx'):
     # Export the model
     export_to_onnx(model, input_size, output_file)
     print(f"Model from epoch {epoch} exported to ONNX format at {output_file}")
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert PyTorch model checkpoint to ONNX format')
