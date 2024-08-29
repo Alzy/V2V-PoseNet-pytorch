@@ -54,7 +54,7 @@ def main(epoch, checkpoint_dir='../checkpoint', onnx_dir='../onnx'):
     # Initialize model
     # hand output channels: 16
     # body output channels: 22
-    model = V2VModel(input_channels=1, output_channels=16)  # Adjust based on your model specification
+    model = V2VModel(input_channels=1, output_channels=20)  # Adjust based on your model specification
     model = load_checkpoint(model, checkpoint_file)
     model.eval()  # Set the model to inference mode
 

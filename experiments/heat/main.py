@@ -100,6 +100,10 @@ if __name__ == '__main__':
     checkpoint_dir = r'./checkpoint'
     start_epoch = 0
     epochs_num = 15
+
+    # Findings:
+    # For hands/fingers batch size 12 works well.
+    # For body, batch size of 4 AND num_workers (on data loaders) of 4 works well
     batch_size = 12
 
     print('==> Preparing data ..')

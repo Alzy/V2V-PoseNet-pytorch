@@ -22,6 +22,11 @@ def run_voxelizer(directory):
 
 
 if __name__ == "__main__":
-    # Replace 'your_directory_path_here' with the path to your directory
-    directory_path = 'D:\HEAT Dataset\processed_body\\augmented'
-    run_voxelizer(directory_path)
+    # Replace these with your directory paths
+    directory_paths = [
+        'F:\\heat_primer_dataset\\processed',
+        # Add more paths as needed
+    ]
+
+    for path in directory_paths:
+        run_voxelizer(path)
