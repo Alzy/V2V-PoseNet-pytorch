@@ -52,8 +52,8 @@ def rotate_voxel_and_joints(voxel_grid, joint_coords, angle, axis='y'):
 
 if __name__ == "__main__":
     # File paths
-    voxel_file_path = r"D:\0.vrt_body.vox.bin"
-    coord_file_path = r"D:\0.crd_body.bin"
+    voxel_file_path = "Z:\\Jeffs corner\\hand datasets\\hands\\2-finger\\augment test\\hand1_hand_top_0.vrt_hand.vox.bin"
+    coord_file_path = "Z:\\Jeffs corner\\hand datasets\\hands\\2-finger\\augment test\\hand1_hand_top_0.crd_hand.bin"
 
     # Grid dimensions
     grid_dimensions = (88, 88, 88)
@@ -74,28 +74,28 @@ if __name__ == "__main__":
         rotated_grid, rotated_joint_coords = rotate_voxel_and_joints(voxel_grid, joint_coords, angle=60, axis=axis)
 
         # Save rotated voxel grid
-        with open(f"D:\\0_rotated_{axis}.vrt_body.vox.bin", "wb") as f:
+        with open(f"Z:\\Jeffs corner\\hand datasets\\hands\\2-finger\\augment test\\0_rotated_{axis}.vrt_body.vox.bin", "wb") as f:
             rotated_grid.astype(np.uint32).flatten().tofile(f)
 
         # Save rotated joint coordinates
-        with open(f"D:\\0_rotated_{axis}.crd_body.bin", "wb") as f:
+        with open(f"Z:\\Jeffs corner\\hand datasets\\hands\\2-finger\\augment test\\0_rotated_{axis}.crd_body.bin", "wb") as f:
             rotated_joint_coords.astype(np.float32).flatten().tofile(f)
 
         print(f"Rotation complete. Rotated files saved with '{axis}' prefix.")
         print("First few original coordinates:", joint_coords[:3])
         print("First few transformed coordinates:", rotated_joint_coords[:3])
 
-    x_angle = np.random.uniform(-180, 180)
-    y_angle = np.random.uniform(-180, 180)
-    z_angle = np.random.uniform(-180, 180)
+    x_angle = np.random.uniform(-15, 15)
+    y_angle = np.random.uniform(-90, 90)
+    z_angle = np.random.uniform(-30, 0)
     rotated_grid, rotated_joint_coords = rotate_voxel_and_joints(voxel_grid, joint_coords, angle=x_angle, axis='x')
     rotated_grid, rotated_joint_coords = rotate_voxel_and_joints(rotated_grid, rotated_joint_coords, angle=y_angle, axis='y')
     rotated_grid, rotated_joint_coords = rotate_voxel_and_joints(rotated_grid, rotated_joint_coords, angle=z_angle, axis='z')
     # Save rotated voxel grid
-    with open(f"D:\\0_rotated_multi.vrt_body.vox.bin", "wb") as f:
+    with open(f"Z:\\Jeffs corner\\hand datasets\\hands\\2-finger\\augment test\\0_rotated_multi.vrt_body.vox.bin", "wb") as f:
         rotated_grid.astype(np.uint32).flatten().tofile(f)
 
     # Save rotated joint coordinates
-    with open(f"D:\\0_rotated_multi.crd_body.bin", "wb") as f:
+    with open(f"Z:\\Jeffs corner\\hand datasets\\hands\\2-finger\\augment test\\0_rotated_multi.crd_body.bin", "wb") as f:
         rotated_joint_coords.astype(np.float32).flatten().tofile(f)
     print(f"Rotation complete. Rotated files saved with multi prefix.")

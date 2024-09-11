@@ -1,5 +1,6 @@
 import numpy as np
-from heat_dataset import HEATDataset
+from .augment_tools import rotate_voxel_and_joints
+from .heat_dataset import HEATDataset
 
 
 def horizontal_flip_data(voxel_grid, joint_coordinates):
@@ -27,6 +28,41 @@ class HEATHandDataset(HEATDataset):
         """
         Perform hand-specific augmentation, such as horizontal flipping.
         """
+
+        initial_hand_location = joint_locations[0]
+
+        hand_location = None
+
+        if initial_hand_location[2] > 0.33 and initial_hand_location[2] < 0.66:
+            if initial_hand_location[0] < 0.5 and initial_hand_location[1] < 0.6:
+                hand_location = 'left'
+            elif initial_hand_location[0] < 0.5 and initial_hand_location[1] > 0.6:
+                hand_location = 'corner'
+            elif initial_hand_location[0] > 0.25 and initial_hand_location[1] > 0.6:
+                hand_location = 'top'
+
+        x_angle = 0
+        y_angle = 0
+        z_angle = 0
+
+        if hand_location == 'left':
+            x_angle = np.random.uniform(-90, 90)
+            y_angle = np.random.uniform(-15, 15)
+            z_angle = np.random.uniform(0, 30)
+        if hand_location == 'corner':
+            x_angle = np.random.uniform(-90, 90)
+            y_angle = np.random.uniform(-15, 15)
+            z_angle = np.random.uniform(0, 30)
+        if hand_location == 'top':
+            x_angle = np.random.uniform(-15, 15)
+            y_angle = np.random.uniform(-90, 90)
+            z_angle = np.random.uniform(-30, 0)
+
+        if hand_location and np.random.rand() < 0.5:
+            voxel_grid, joint_locations = rotate_voxel_and_joints(voxel_grid, joint_locations, angle=x_angle, axis='x')
+            voxel_grid, joint_locations = rotate_voxel_and_joints(voxel_grid, joint_locations, angle=y_angle, axis='y')
+            voxel_grid, joint_locations = rotate_voxel_and_joints(voxel_grid, joint_locations, angle=z_angle, axis='z')
+
         if np.random.rand() < 0.5:
             return horizontal_flip_data(voxel_grid, joint_locations)
 
